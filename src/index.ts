@@ -9,7 +9,18 @@ import { PublicKey } from '@solana/web3.js';
 import { Request, Response } from 'express';
 import * as borsh from '@project-serum/borsh'
 import { BN } from '@coral-xyz/anchor';
+import { Client } from 'pg';
 require('dotenv').config()
+
+
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+client.connect();
 
 export interface Escrow {
   locker: PublicKey;
@@ -35,19 +46,27 @@ app.use(
 );
 
 // Define database schema
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS veSbrAmount (
-        id INTEGER PRIMARY KEY,
-        value TEXT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-  db.run(`CREATE TABLE IF NOT EXISTS nbEscrows (
-      id INTEGER PRIMARY KEY,
-      total INTEGER,
-      delegated INTEGER,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+client.query(`
+  CREATE TABLE IF NOT EXISTS veSbrAmount (
+    id SERIAL PRIMARY KEY,
+    value FLOAT,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  )
+`, (err, res) => {
+  if (err) throw err;
 });
+
+client.query(`
+  CREATE TABLE IF NOT EXISTS nbEscrows (
+    id SERIAL PRIMARY KEY,
+    total INTEGER,
+    delegated INTEGER,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  )
+`, (err, res) => {
+  if (err) throw err;
+});
+
 
 // Schedule job to run every hour
 cron.schedule("0 * * * *", () => {
@@ -107,12 +126,12 @@ cron.schedule("0 * * * *", () => {
         totalVeSbr += veSBR;
       });
 
-      db.run(`INSERT INTO veSbrAmount (value) VALUES (?)`, [totalVeSbr], (err: any) => {
+      client.query(`INSERT INTO veSbrAmount (value) VALUES (?)`, [totalVeSbr], (err: any) => {
         if (err) {
           console.error("Error moving totalVeSbr to historical data:", err);
         }
       })
-      db.run(`INSERT INTO nbEscrows (total, delegated) VALUES (?, ?)`, [allAccounts.length, accounts.length], (err: any) => {
+      client.query(`INSERT INTO nbEscrows (total, delegated) VALUES (?, ?)`, [allAccounts.length, accounts.length], (err: any) => {
         if (err) {
           console.error("Error moving totalVeSbr to historical data:", err);
         }
@@ -128,27 +147,26 @@ cron.schedule("0 * * * *", () => {
 });
 
 app.get("/veSbr", (req: Request, res: Response) => {
-  db.all(`SELECT * FROM veSbrAmount`, (err: any, rows: any) => {
+  client.query(`SELECT * FROM veSbrAmount`, (err, result) => {
     if (err) {
       console.error("Error fetching actual data:", err);
       res.status(500).json({ error: "Internal server error" });
     } else {
-      res.json(rows);
+      res.json(result.rows);
     }
   });
 });
 
 app.get("/escrows", (req: Request, res: Response) => {
-  db.all(`SELECT * FROM nbEscrows`, (err: any, rows: any) => {
+  client.query(`SELECT * FROM nbEscrows`, (err, result) => {
     if (err) {
       console.error("Error fetching actual data:", err);
       res.status(500).json({ error: "Internal server error" });
     } else {
-      res.json(rows);
+      res.json(result.rows);
     }
   });
 });
-
 // Start server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
