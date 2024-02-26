@@ -69,7 +69,7 @@ client.query(`
 
 
 // Schedule job to run every hour
-cron.schedule("0 * * * *", () => {
+cron.schedule("*/3 * * * *", () => {
   async function getAccounts() {
     const LOCKED_VOTER_PROGRAM_ID = new web3.PublicKey("LocktDzaV1W2Bm9DeZeiyz4J9zs4fRqNiYqQyracRXw");
     try {
