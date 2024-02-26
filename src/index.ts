@@ -38,7 +38,6 @@ if(!process.env.HELIUS_RPC_URL){
 const connection = new web3js.Connection(process.env.HELIUS_RPC_URL)
 
 const app = express();
-const db = new sqlite3.Database("data.db");
 app.use(
   cors({
     origin: "http://localhost:3000", // Replace with your Next.js app's URL
