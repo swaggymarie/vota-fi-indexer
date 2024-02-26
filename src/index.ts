@@ -14,7 +14,7 @@ require('dotenv').config()
 
 
 const client = new Client({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.ENVIRONMNENT == "production" ? process.env.DATABASE_PRIVATE_URL : process.env.DATABASE_URL ,
   ssl: {
     rejectUnauthorized: false
   }
@@ -32,7 +32,7 @@ export interface Escrow {
   escrowEndsAt: bigint;
   voteDelegate: PublicKey;
 }
-if(!process.env.HELIUS_RPC_URL){
+if (!process.env.HELIUS_RPC_URL) {
   throw Error("Please provide a RPC URL in your env.")
 }
 const connection = new web3js.Connection(process.env.HELIUS_RPC_URL)
