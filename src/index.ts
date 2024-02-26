@@ -12,7 +12,6 @@ import { BN } from '@coral-xyz/anchor';
 import { Client } from 'pg';
 require('dotenv').config()
 
-
 const client = new Client({
   connectionString: process.env.ENVIRONMNENT == "production" ? process.env.DATABASE_PRIVATE_URL : process.env.DATABASE_URL ,
   ssl: {
@@ -46,20 +45,11 @@ app.use(
 
 // Define database schema
 client.query(`
-  CREATE TABLE IF NOT EXISTS veSbrAmount (
+  CREATE TABLE IF NOT EXISTS escrows (
     id SERIAL PRIMARY KEY,
-    value FLOAT,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-  )
-`, (err, res) => {
-  if (err) throw err;
-});
-
-client.query(`
-  CREATE TABLE IF NOT EXISTS nbEscrows (
-    id SERIAL PRIMARY KEY,
-    total INTEGER,
-    delegated INTEGER,
+    veSbrAmount FLOAT,
+    nbTotal INTEGER,
+    nbDelegated INTEGER,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
   )
 `, (err, res) => {
@@ -125,17 +115,11 @@ cron.schedule("*/3 * * * *", () => {
         totalVeSbr += veSBR;
       });
 
-      client.query(`INSERT INTO veSbrAmount (value) VALUES (?)`, [totalVeSbr], (err: any) => {
+      client.query(`INSERT INTO escrows (veSbrAmount, nbTotal, nbDelegated) VALUES ($1, $2, $3)`, [totalVeSbr, allAccounts.length, accounts.length], (err: any) => {
         if (err) {
-          console.error("Error moving totalVeSbr to historical data:", err);
+          console.error("Error moving totalVeSbr to veSbrAmount data:", err);
         }
       })
-      client.query(`INSERT INTO nbEscrows (total, delegated) VALUES (?, ?)`, [allAccounts.length, accounts.length], (err: any) => {
-        if (err) {
-          console.error("Error moving totalVeSbr to historical data:", err);
-        }
-      })
-
 
     } catch (e) {
       console.log(e);
@@ -145,19 +129,8 @@ cron.schedule("*/3 * * * *", () => {
 
 });
 
-app.get("/veSbr", (req: Request, res: Response) => {
-  client.query(`SELECT * FROM veSbrAmount`, (err, result) => {
-    if (err) {
-      console.error("Error fetching actual data:", err);
-      res.status(500).json({ error: "Internal server error" });
-    } else {
-      res.json(result.rows);
-    }
-  });
-});
-
 app.get("/escrows", (req: Request, res: Response) => {
-  client.query(`SELECT * FROM nbEscrows`, (err, result) => {
+  client.query(`SELECT * FROM escrows`, (err, result) => {
     if (err) {
       console.error("Error fetching actual data:", err);
       res.status(500).json({ error: "Internal server error" });
