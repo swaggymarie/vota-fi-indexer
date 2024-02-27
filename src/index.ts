@@ -40,14 +40,17 @@ const app = express();
 
 const allowedOrigins = ["http://localhost:3000", "https://vota-front.vercel.app/", "https://vota.fi"];
 
-var corsOptions = {
-  origin: allowedOrigins,
-  optionsSuccessStatus: 200 // For legacy browser support
-}
-
-app.use(
-  cors(corsOptions)
-);
+app.use(cors({
+  origin: function(origin:any, callback:any){
+    if(!origin) return callback(null, false);
+    if(allowedOrigins.indexOf(origin) === -1){
+      var msg = 'The CORS policy for this site does not ' +
+                'allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  }
+}));
 
 // Define database schema
 client.query(`
