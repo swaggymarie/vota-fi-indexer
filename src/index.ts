@@ -13,7 +13,7 @@ import { Client } from 'pg';
 require('dotenv').config()
 
 const client = new Client({
-  connectionString: process.env.ENVIRONMNENT == "production" ? process.env.DATABASE_PRIVATE_URL : process.env.DATABASE_URL ,
+  connectionString: process.env.ENVIRONMNENT == "production" ? process.env.DATABASE_PRIVATE_URL : process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }
@@ -39,17 +39,14 @@ const connection = new web3js.Connection(process.env.HELIUS_RPC_URL)
 const app = express();
 
 const allowedOrigins = ["http://localhost:3000", "https://vota-front.vercel.app/", "https://vota.fi"];
+
+var corsOptions = {
+  origin: allowedOrigins,
+  optionsSuccessStatus: 200 // For legacy browser support
+}
+
 app.use(
-  cors({
-    origin: function (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
-      // Check if the request origin is in the allowed origins list or if it is undefined (for server-to-server requests)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-  })
+  cors(corsOptions)
 );
 
 // Define database schema
