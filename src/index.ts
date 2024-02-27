@@ -37,9 +37,18 @@ if (!process.env.HELIUS_RPC_URL) {
 const connection = new web3js.Connection(process.env.HELIUS_RPC_URL)
 
 const app = express();
+
+const allowedOrigins = ["http://localhost:3000", "https://vota-front.vercel.app/", "https://vota.fi"];
 app.use(
   cors({
-    origin: "http://localhost:3000", // Replace with your Next.js app's URL
+    origin: function (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
+      // Check if the request origin is in the allowed origins list or if it is undefined (for server-to-server requests)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
   })
 );
 
