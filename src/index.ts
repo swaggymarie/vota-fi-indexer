@@ -38,7 +38,7 @@ const connection = new web3js.Connection(process.env.HELIUS_RPC_URL)
 
 const app = express();
 
-const allowedOrigins = ["http://localhost:3000", "https://vota-front.vercel.app", "https://vota.fi"];
+const allowedOrigins = ["http://localhost:3000", "https://vota-front.vercel.app", "https://vota.fi", "https://themetadao.org"];
 
 app.use(cors({
   origin: function(origin:any, callback:any){
@@ -51,6 +51,7 @@ app.use(cors({
     return callback(null, true);
   }
 }));
+
 
 // Define database schema
 client.query(`
