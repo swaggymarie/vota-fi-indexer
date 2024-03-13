@@ -90,7 +90,7 @@ cron.schedule("0 * * * *", () => {
           {
             memcmp: {
               offset: 8 + 32 + 32 + 1 + 32 + 8 + 8 + 8,
-              bytes: "Fm53VwAiMfGBprgh83x6v5fYKfiq7yQWgUCZKSdYzHPk", // Specify the voteDelegate public key
+              bytes: "HQNBakKUm5sWqDwMeB36LFYFWEoBEgTGAUKnVgH3PN8H", // Specify the voteDelegate public key
             },
           },
         ],
