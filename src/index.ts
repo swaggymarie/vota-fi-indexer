@@ -68,8 +68,9 @@ client.query(`
 client.query(`
   CREATE TABLE IF NOT EXISTS gauges (
     id SERIAL PRIMARY KEY,
-    gaugeMeister STRING,
-    quarry STRING,
+    gaugeMeister TEXT,
+    quarry TEXT,
+    address TEXT
   )
 `, (err, res) => {
   if (err) throw err;
@@ -88,7 +89,7 @@ async function setGauges() {
   let accounts = await connection.getProgramAccounts(gaugeProgramId, { filters: [{ dataSize: borshAccount.span }, { memcmp: { offset: 8, bytes: "28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU" } }] })
   let decodedAccounts = await Promise.all(accounts.map(async (account) => {
     let gauge = borshAccount.decode(account.account.data)
-    gauge.pubKey = account.pubkey
+    gauge.address = account.pubkey.toString()
     if (!gauge.isDisabled)
       return gauge
   }))
@@ -100,8 +101,8 @@ async function setGauges() {
       console.error("Error deleting existing rows:", err);
     } else {
       // Insert all decodedAccounts
-      const values = decodedAccounts.map((gauge) => [gauge.gaugemeister, gauge.quarry]);
-      client.query(`INSERT INTO gauges (gaugeMeister, quarry) VALUES $1`, [values], (err: any) => {
+      const values = decodedAccounts.map((gauge) => [gauge.gaugemeister, gauge.quarry, gauge.address]);
+      client.query(`INSERT INTO gauges (gaugeMeister, quarry, address) VALUES $1`, [values], (err: any) => {
         if (err) {
           console.error("Error inserting decodedAccounts:", err);
         }
