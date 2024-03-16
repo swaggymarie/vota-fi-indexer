@@ -87,7 +87,6 @@ async function setGauges() {
   ])
   let accounts = await connection.getProgramAccounts(gaugeProgramId, { filters: [{ dataSize: borshAccount.span }, { memcmp: { offset: 8, bytes: "28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU" } }] })
   let decodedAccounts = await Promise.all(accounts.map(async (account) => {
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds
     let gauge = borshAccount.decode(account.account.data)
     gauge.pubKey = account.pubkey
     if (!gauge.isDisabled)
