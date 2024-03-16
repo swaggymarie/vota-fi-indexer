@@ -41,17 +41,16 @@ const app = express();
 const allowedOrigins = ["http://localhost:3000", "https://vota-front.vercel.app", "https://vota.fi", "https://themetadao.org"];
 
 app.use(cors({
-  origin: function(origin:any, callback:any){
-    if(!origin) return callback(null, false);
-    if(allowedOrigins.indexOf(origin) === -1){
+  origin: function (origin: any, callback: any) {
+    if (!origin) return callback(null, false);
+    if (allowedOrigins.indexOf(origin) === -1) {
       var msg = 'The CORS policy for this site does not ' +
-                'allow access from the specified Origin.';
+        'allow access from the specified Origin.';
       return callback(new Error(msg), false);
     }
     return callback(null, true);
   }
 }));
-
 
 // Define database schema
 client.query(`
@@ -66,6 +65,51 @@ client.query(`
   if (err) throw err;
 });
 
+client.query(`
+  CREATE TABLE IF NOT EXISTS gauges (
+    id SERIAL PRIMARY KEY,
+    gaugeMeister STRING,
+    quarry STRING,
+  )
+`, (err, res) => {
+  if (err) throw err;
+});
+
+
+const gaugeProgramId = new PublicKey('GaugesLJrnVjNNWLReiw3Q7xQhycSBRgeHGTMDUaX231')
+
+async function setGauges() {
+  const borshAccount = borsh.struct([
+    borsh.u64("discriminator"),
+    borsh.publicKey('gaugemeister'),
+    borsh.publicKey('quarry'),
+    borsh.bool("isDisabled"),
+  ])
+  let accounts = await connection.getProgramAccounts(gaugeProgramId, { filters: [{ dataSize: borshAccount.span }, { memcmp: { offset: 8, bytes: "28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU" } }] })
+  let decodedAccounts = await Promise.all(accounts.map(async (account) => {
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds
+    let gauge = borshAccount.decode(account.account.data)
+    gauge.pubKey = account.pubkey
+    if (!gauge.isDisabled)
+      return gauge
+  }))
+  decodedAccounts = decodedAccounts.filter((gauge) => gauge !== undefined);
+  
+  // Delete all existing rows in the gauges table
+  client.query(`DELETE FROM gauges`, (err: any) => {
+    if (err) {
+      console.error("Error deleting existing rows:", err);
+    } else {
+      // Insert all decodedAccounts
+      const values = decodedAccounts.map((gauge) => [gauge.gaugemeister, gauge.quarry]);
+      client.query(`INSERT INTO gauges (gaugeMeister, quarry) VALUES $1`, [values], (err: any) => {
+        if (err) {
+          console.error("Error inserting decodedAccounts:", err);
+        }
+      });
+    }
+  });
+}
 
 // Schedule job to run every hour
 cron.schedule("0 * * * *", () => {
@@ -131,12 +175,14 @@ cron.schedule("0 * * * *", () => {
         }
       })
 
+      await new Promise(resolve => setTimeout(resolve, 30000)); // Wait for 30 seconds
+      setGauges()
+
     } catch (e) {
       console.log(e);
     }
   }
   getAccounts();
-
 });
 
 app.get("/escrows", (req: Request, res: Response) => {
@@ -149,6 +195,18 @@ app.get("/escrows", (req: Request, res: Response) => {
     }
   });
 });
+
+app.get("/gauges", (req: Request, res: Response) => {
+  client.query(`SELECT * FROM gauges`, (err, result) => {
+    if (err) {
+      console.error("Error fetching actual data:", err);
+      res.status(500).json({ error: "Internal server error" });
+    } else {
+      res.json(result.rows);
+    }
+  });
+});
+
 // Start server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
