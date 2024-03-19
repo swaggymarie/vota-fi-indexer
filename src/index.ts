@@ -88,28 +88,35 @@ async function setGauges() {
   ])
   let accounts = await connection.getProgramAccounts(gaugeProgramId, { filters: [{ dataSize: borshAccount.span }, { memcmp: { offset: 8, bytes: "28ZDtf6d2wsYhBvabTxUHTRT6MDxqjmqR7RMCp348tyU" } }] })
   let decodedAccounts = await Promise.all(accounts.map(async (account) => {
-    let gauge = borshAccount.decode(account.account.data)
-    gauge.address = account.pubkey.toString()
-    if (!gauge.isDisabled)
+    let _gauge = borshAccount.decode(account.account.data)
+
+    let gauge: { gaugemeister: string, quarry: string, address: string } = {
+      gaugemeister: _gauge.gaugemeister.toString(),
+      quarry: _gauge.quarry.toString(),
+      address: account.pubkey.toString(),
+    }
+    if (!_gauge.isDisabled)
       return gauge
   }))
   decodedAccounts = decodedAccounts.filter((gauge) => gauge !== undefined);
-  
+
   // Delete all existing rows in the gauges table
-  client.query(`DELETE FROM gauges`, (err: any) => {
+   await client.query(`TRUNCATE TABLE gauges RESTART IDENTITY;`, (err: any) => {
     if (err) {
       console.error("Error deleting existing rows:", err);
     } else {
-      // Insert all decodedAccounts
-      const values = decodedAccounts.map((gauge) => [gauge.gaugemeister, gauge.quarry, gauge.address]);
-      client.query(`INSERT INTO gauges (gaugeMeister, quarry, address) VALUES $1`, [values], (err: any) => {
-        if (err) {
-          console.error("Error inserting decodedAccounts:", err);
-        }
-      });
+
+      decodedAccounts.map((gauge) =>
+
+        gauge && client.query(`INSERT INTO gauges (gaugeMeister, quarry, address) VALUES ($1, $2, $3)`, [gauge.gaugemeister, gauge.quarry, gauge.address], (err: any) => {
+          if (err) {
+            console.error("Error inserting decodedAccounts:", err);
+          }
+        }))
     }
   });
 }
+
 
 // Schedule job to run every hour
 cron.schedule("0 * * * *", () => {
